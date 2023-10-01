@@ -1,9 +1,7 @@
 const { response } = require('express');
 const { isValidObjectId, Mongoose } = require('mongoose');
 const Planned = require('../models/planned');
-
-
-
+const Cliente = require('../models/cliente');
 
 const plannedGet = async (req = request, res = response) => {
     try {
@@ -12,7 +10,8 @@ const plannedGet = async (req = request, res = response) => {
 
         const [totalRegistros, datos] = await Promise.all([
             Planned.countDocuments(query),
-            Planned.find(query)
+            Planned.find(query).populate({ path: 'cliente', select: ['nombreComercial','mapa'] })
+                               .populate({ path: 'usuario', select: ['_id', 'nombres','apellidos']})
         ])
 
         res.status(200).json({
@@ -31,6 +30,29 @@ const plannedGet = async (req = request, res = response) => {
     }
 }
 
+const plannedGetByUsuario = async (req = request, res = response) => {
+    try {
+
+        const usuarioId = req.params.id;
+        const query = { estado: true, usuario : usuarioId };
+
+        const datos = await Planned.find(query).populate({ path: 'cliente', select: ['nombreComercial','mapa'] })
+                                               .populate({ path: 'usuario', select: ['_id', 'nombres','apellidos']});
+
+        res.status(200).json({
+            codigo: 0,
+            msg: 'Consulta realizada con exito',
+            datos
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            codigo: 2,
+            msg: 'Error al obtener los datos',
+            error
+        });
+    }
+}
 
 const plannedPost = async (req = request, res = response) => {
     try {
@@ -48,13 +70,14 @@ const plannedPost = async (req = request, res = response) => {
         const prefijo = process.env.PREFIJO_PLAN;
         const tamanio = process.env.TAMANIO_MAXIMO_CORRELATIVO;
         const newCodigo = prefijo + newSecuencia.toString().padStart(tamanio, 0);
-        
+        const clienteId = await Cliente.findById(req.body.cliente);
         const { idPlanned = newCodigo, 
-                idCliente,
+                idCliente = clienteId.idcliente,
                 cliente, 
                 usuario, 
                 fecha_programada, 
-                situacion, 
+                descripcion,
+                situacion = "P", 
                 estado = true,
                 creado_el =  nDate,
                 creado_por,
@@ -68,6 +91,7 @@ const plannedPost = async (req = request, res = response) => {
                                         cliente, 
                                         usuario, 
                                         fecha_programada, 
+                                        descripcion,
                                         situacion, 
                                         estado,
                                         creado_el,
@@ -100,13 +124,12 @@ const plannedPut = async (req = request, res = response) => {
         const id = req.params.id;
 
         const { _id, ...resto } = req.body;
-
         const dato = await Planned.findByIdAndUpdate(id, resto);
-
+        const resp = await Planned.findById(id);
         res.status(200).json({
             codigo: 0,
             msg: 'Se guardaron los cambios',
-            dato
+            resp
         });
     } catch (error) {
         res.status(500).json({
@@ -141,6 +164,7 @@ const plannedDel = async (req = request, res = response) => {
 
 module.exports = {
     plannedGet,
+    plannedGetByUsuario,
     plannedPost,
     plannedPut,
     plannedDel

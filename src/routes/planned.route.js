@@ -1,18 +1,21 @@
 const { Router } = require('express');
-const {   plannedGet, plannedPost, plannedPut, plannedDel } = require('../controllers/planned.controller');
+const { plannedGet, plannedGetByUsuario, plannedPost, plannedPut, plannedDel } = require('../controllers/planned.controller');
 const { check } = require('express-validator');
 const { validarJWT }  = require('../middlewares/validarJWT')   
 
 const router = Router();
 
 router.get('/', [
-    validarJWT
+     validarJWT
 ], plannedGet);
+
+router.get('/:id', [
+    validarJWT
+], plannedGetByUsuario);
 
 //metodo de creacion
 router.post('/', [
     validarJWT,
-    check('idCliente', 'El codigo del cliente es obligatorio').not().isEmpty(),
     check('cliente', 'El cliente es obligatorio').not().isEmpty(),
     check('usuario', 'El usuario es obligatorio').not().isEmpty(),
     check('fecha_programada','La fecha de programacion es obligatoria').isDate()
